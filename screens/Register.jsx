@@ -2,17 +2,47 @@
 import { Eye, EyeOff, Lock, Mail, TrendingUp, User } from 'lucide-react-native';
 import { useState } from 'react';
 import {
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { signUp } from '../services/auth';
 
 export default function Register({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
+  const [fullname, setFullname] = useState('');
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
+  const [agree, setAgree]       = useState(false);
+  const [loading, setLoading]   = useState(false);
+
+  const handleRegister = async () => {
+    if (!fullname || !email || !password) {
+      return Alert.alert('Thông báo', 'Vui lòng điền đầy đủ thông tin');
+    }
+    if (password.length < 8) {
+      return Alert.alert('Thông báo', 'Mật khẩu phải ít nhất 8 ký tự');
+    }
+    if (!agree) {
+      return Alert.alert('Thông báo', 'Bạn cần đồng ý Điều khoản sử dụng');
+    }
+    try {
+      setLoading(true);
+      await signUp({ fullname, email, password });
+      Alert.alert('Thành công', 'Đăng ký thành công!');
+      navigation.replace('Login');
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Lỗi', err.response?.data?.msg || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -43,6 +73,8 @@ export default function Register({ navigation }) {
                 placeholder="Nhập họ và tên của bạn"
                 placeholderTextColor="#9ca3af"
                 style={styles.input}
+                value={fullname}
+                onChangeText={setFullname}
               />
             </View>
           </View>
@@ -57,6 +89,8 @@ export default function Register({ navigation }) {
                 placeholderTextColor="#9ca3af"
                 keyboardType="email-address"
                 style={styles.input}
+                value={email}
+                onChangeText={setEmail}
               />
             </View>
           </View>
@@ -71,16 +105,17 @@ export default function Register({ navigation }) {
                 placeholderTextColor="#9ca3af"
                 secureTextEntry={!showPassword}
                 style={styles.input}
+                value={password}
+                onChangeText={setPassword}
               />
               <TouchableOpacity
                 onPress={() => setShowPassword(v => !v)}
                 style={styles.eyeButton}
               >
-                {showPassword ? (
-                  <EyeOff color="#9ca3af" size={20} />
-                ) : (
-                  <Eye color="#9ca3af" size={20} />
-                )}
+                {showPassword
+                  ? <EyeOff color="#9ca3af" size={20} />
+                  : <Eye    color="#9ca3af" size={20} />
+                }
               </TouchableOpacity>
             </View>
             <Text style={styles.hint}>
@@ -90,7 +125,13 @@ export default function Register({ navigation }) {
 
           {/* Terms */}
           <View style={styles.termsRow}>
-            <TouchableOpacity style={styles.checkbox} />
+            <TouchableOpacity
+              style={[
+                styles.checkbox,
+                agree && { backgroundColor: '#10b981', borderColor: '#10b981' },
+              ]}
+              onPress={() => setAgree(!agree)}
+            />
             <Text style={styles.termsText}>
               Tôi đồng ý với{' '}
               <Text style={styles.link}>Điều khoản sử dụng</Text> và{' '}
@@ -99,8 +140,14 @@ export default function Register({ navigation }) {
           </View>
 
           {/* Submit */}
-          <TouchableOpacity style={styles.submitButton}>
-            <Text style={styles.submitText}>Tạo tài khoản</Text>
+          <TouchableOpacity
+            style={[styles.submitButton, (!agree || loading) && { opacity: 0.6 }]}
+            disabled={!agree || loading}
+            onPress={handleRegister}
+          >
+            <Text style={styles.submitText}>
+              {loading ? 'Đang xử lý...' : 'Tạo tài khoản'}
+            </Text>
           </TouchableOpacity>
 
           {/* Divider */}
@@ -144,7 +191,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  title: { fontSize: 24, fontWeight: '700', color: '#fff', marginBottom: 4 },
+  title:    { fontSize: 24, fontWeight: '700', color: '#fff', marginBottom: 4 },
   subtitle: { color: '#d1d5db' },
 
   card: {
@@ -154,7 +201,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   cardTitle: { fontSize: 20, fontWeight: '700', color: '#fff', textAlign: 'center' },
-  cardDesc: { color: '#d1d5db', textAlign: 'center', marginBottom: 16 },
+  cardDesc:  { color: '#d1d5db', textAlign: 'center', marginBottom: 16 },
 
   field: { marginBottom: 16 },
   label: { color: '#e5e7eb', marginBottom: 4, fontWeight: '600' },

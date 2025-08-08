@@ -1,26 +1,48 @@
 // screens/Login.js
 import {
-    Eye,
-    EyeOff,
-    Lock,
-    Mail,
-    TrendingUp
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  TrendingUp
 } from 'lucide-react-native';
 import { useState } from 'react';
 import {
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { logIn } from '../services/auth';
 
 export default function Login({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(false);
+  const [loading, setLoading]   = useState(false);
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      return Alert.alert('Thông báo', 'Vui lòng nhập email và mật khẩu');
+    }
+    try {
+      setLoading(true);
+      await logIn({ email, password });
+      navigation.replace('Dashboard');
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Lỗi', err.response?.data?.msg || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.page}>
@@ -62,6 +84,8 @@ export default function Login({ navigation }) {
                     placeholderTextColor="#6b7280"
                     keyboardType="email-address"
                     autoCapitalize="none"
+                    value={email}
+                    onChangeText={setEmail}
                   />
                 </View>
               </View>
@@ -76,6 +100,8 @@ export default function Login({ navigation }) {
                     placeholder="Nhập mật khẩu của bạn"
                     placeholderTextColor="#6b7280"
                     secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
                   />
                   <TouchableOpacity onPress={() => setShowPassword(v => !v)}>
                     {showPassword ? (
@@ -89,7 +115,10 @@ export default function Login({ navigation }) {
 
               {/* Remember + Forgot */}
               <View style={styles.rememberRow}>
-                <TouchableOpacity style={styles.checkbox} />
+                <TouchableOpacity
+                  style={[styles.checkbox, remember && { backgroundColor: '#10b981', borderColor: '#10b981' }]}
+                  onPress={() => setRemember(v => !v)}
+                />
                 <Text style={styles.rememberText}>Ghi nhớ đăng nhập</Text>
                 <View style={styles.rememberSpacer} />
                 <TouchableOpacity>
@@ -99,10 +128,13 @@ export default function Login({ navigation }) {
 
               {/* Login Button */}
               <TouchableOpacity
-                style={styles.btn}
-                onPress={() => navigation.replace('Dashboard')}
+                style={[styles.btn, loading && { opacity: 0.6 }]}
+                disabled={loading}
+                onPress={handleLogin}
               >
-                <Text style={styles.btnText}>Đăng nhập</Text>
+                <Text style={styles.btnText}>
+                  {loading ? 'Đang xử lý...' : 'Đăng nhập'}
+                </Text>
               </TouchableOpacity>
 
               {/* Alt Button */}
@@ -243,6 +275,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 12,
   },
   btnText: {
     color: '#fff',
@@ -251,13 +284,13 @@ const styles = StyleSheet.create({
   },
 
   altButton: {
-    marginTop: 12,
     height: 48,
     borderWidth: 1,
     borderColor: '#10b981',
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 24,
   },
   altButtonText: {
     color: '#10b981',
@@ -266,7 +299,7 @@ const styles = StyleSheet.create({
   },
 
   divider: {
-    marginVertical: 24,
+    marginBottom: 24,
     alignItems: 'center',
   },
   dividerText: {
