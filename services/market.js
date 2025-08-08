@@ -13,3 +13,22 @@ export async function getHistory(symbol, period = '1m') {
     return [];
   }
 }
+export async function getSymbols(q) {
+  try {
+    const resp = await API.get('/api/symbols', { params: { q } });
+    return resp.data.symbols || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function addSymbol(code) {
+  try {
+    const resp = await API.post('/api/symbols', { code });
+    // trả về đối tượng { code: 'XXX' }
+    return resp.data;
+  } catch (e) {
+    // ném lỗi để component xử lý dưới dạng Alert
+    throw e;
+  }
+}
