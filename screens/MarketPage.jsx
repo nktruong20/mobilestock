@@ -1,23 +1,29 @@
 // screens/MarketPage.js
-import {
-    Feather,
-    Ionicons,
-    MaterialCommunityIcons,
-} from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useEffect, useMemo, useState } from 'react';
 import {
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import BottomNav from '../screens/BottomNav'; // ← ensure this path
+import { LineChart } from 'react-native-chart-kit';
+import BottomNav from '../screens/BottomNav';
+
+import { getHistory } from '../services/market';
 
 export default function MarketPage() {
   const navigation = useNavigation();
+
+  const [period, setPeriod] = useState('1m');
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const marketIndices = [
     { name: 'VN-Index',  value: '1,280.50', change: '+12.30', percent: '+0.97%', up: true },
@@ -38,6 +44,42 @@ export default function MarketPage() {
     ],
   };
 
+  useEffect(() => {
+    setLoading(true);
+    (async () => {
+      const h = await getHistory('AAPL', period);
+      setHistory(h);
+      setLoading(false);
+    })();
+  }, [period]);
+
+  // Prepare labels & data arrays
+  const { labels, data } = useMemo(() => {
+    if (!history.length) return { labels: [], data: [] };
+    return {
+      labels: history.map(item => {
+        const d = new Date(item.date);
+        return `${d.getDate()}/${d.getMonth() + 1}`;
+      }),
+      data: history.map(item => item.close),
+    };
+  }, [history]);
+
+  const screenWidth = Dimensions.get('window').width - 32;
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4caf50" />
+      </SafeAreaView>
+    );
+  }
+
+  const titleText =
+    period === '1m'
+      ? 'Giá đóng cửa AAPL (30 ngày)'
+      : 'Giá đóng cửa AAPL (3 tháng)';
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1a1a1a" />
@@ -53,7 +95,6 @@ export default function MarketPage() {
         </TouchableOpacity>
       </View>
 
-      {/* Content */}
       <ScrollView contentContainerStyle={styles.content}>
         {/* Market Indices */}
         <View style={styles.indicesContainer}>
@@ -61,11 +102,10 @@ export default function MarketPage() {
             <View key={i} style={styles.card}>
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>{idx.name}</Text>
-                {idx.up ? (
-                  <Ionicons name="trending-up" size={18} color="#4caf50" />
-                ) : (
-                  <Ionicons name="trending-down" size={18} color="#f44336" />
-                )}
+                {idx.up 
+                  ? <Ionicons name="trending-up" size={18} color="#4caf50" />
+                  : <Ionicons name="trending-down" size={18} color="#f44336" />
+                }
               </View>
               <View style={styles.cardBody}>
                 <Text style={styles.value}>{idx.value}</Text>
@@ -77,33 +117,83 @@ export default function MarketPage() {
           ))}
         </View>
 
-        {/* Chart Placeholder */}
+        {/* Period Toggle */}
+        <View style={styles.toggleContainer}>
+          {[
+            { key: '1m', label: '1 tháng' },
+            { key: '3m', label: '3 tháng' },
+          ].map(opt => (
+            <TouchableOpacity
+              key={opt.key}
+              style={[
+                styles.toggleBtn,
+                period === opt.key && styles.toggleBtnActive,
+              ]}
+              onPress={() => setPeriod(opt.key)}
+            >
+              <Text
+                style={[
+                  styles.toggleLabel,
+                  period === opt.key && styles.toggleLabelActive,
+                ]}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Chart Section */}
         <View style={styles.chartSection}>
-          <Text style={styles.sectionTitle}>Biểu đồ VN-Index</Text>
-          <View style={styles.chartCard}>
-            <MaterialCommunityIcons name="candlestick-chart" size={40} color="#666" />
-            <Text style={styles.chartText}>Biểu đồ hình nến sẽ hiển thị ở đây</Text>
-            <Text style={styles.chartSubtext}>
-              Tích hợp thư viện như `react-native-svg-charts` để hiển thị dữ liệu thực.
-            </Text>
-          </View>
+          <Text style={styles.sectionTitle}>{titleText}</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingLeft: 16 }}
+          >
+            <View style={[styles.chartCard, { width: Math.max(screenWidth, data.length * 40) }]}>
+              {data.length > 0 ? (
+                <LineChart
+                  data={{
+                    labels,
+                    datasets: [{ data }],
+                  }}
+                  width={Math.max(screenWidth, data.length * 40)}
+                  height={260}
+                  yAxisSuffix=" USD"
+                  chartConfig={{
+                    backgroundGradientFrom: '#1a1a1a',
+                    backgroundGradientTo: '#1a1a1a',
+                    decimalPlaces: 2,
+                    color: (opacity = 1) => `rgba(76,175,80,${opacity})`,
+                    labelColor: (opacity = 1) => `rgba(245,245,245,${opacity})`,
+                    style: { borderRadius: 8 },
+                    propsForDots: { r: '3', strokeWidth: '2', stroke: '#4caf50' },
+                  }}
+                  style={{ borderRadius: 8 }}
+                  withDots
+                  withShadow={false}
+                  withInnerLines={false}
+                />
+              ) : (
+                <Text style={styles.noDataText}>Không có dữ liệu để hiển thị</Text>
+              )}
+            </View>
+          </ScrollView>
         </View>
 
         {/* Top Movers */}
         <View style={styles.moversContainer}>
-          {['gainers', 'losers'].map((key) => (
+          {['gainers', 'losers'].map(key => (
             <View key={key} style={styles.moversCard}>
               <Text style={[styles.sectionTitle, key === 'gainers' ? styles.up : styles.down]}>
                 {key === 'gainers' ? 'Tăng giá mạnh nhất' : 'Giảm giá mạnh nhất'}
               </Text>
               {movers[key].map((s, idx) => (
                 <View key={idx} style={styles.stockItem}>
-                  <View>
-                    <Text style={styles.symbol}>{s.symbol}</Text>
-                    <Text style={styles.name}>{s.name}</Text>
-                  </View>
+                  <Text style={styles.symbol}>{s.symbol}</Text>
                   <View style={styles.right}>
-                    <Text style={styles.price}>${s.price.toFixed(2)}</Text>
+                    <Text style={styles.price}>{s.price.toFixed(2)}</Text>
                     <Text style={[styles.percent, key === 'gainers' ? styles.up : styles.down]}>
                       {s.percent}
                     </Text>
@@ -115,47 +205,37 @@ export default function MarketPage() {
         </View>
       </ScrollView>
 
-      {/* Bottom nav */}
       <BottomNav activeRoute="Market" />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a1a'
+  },
   container: { flex: 1, backgroundColor: '#1a1a1a' },
 
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-    backgroundColor: '#1a1a1a',
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', padding: 12,
+    backgroundColor: '#1a1a1a', borderBottomWidth: 1, borderBottomColor: '#333'
   },
   headerTitle: { fontSize: 18, color: '#f5f5f5', fontWeight: 'bold' },
 
   content: { padding: 16, paddingBottom: 80 },
 
   indicesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 16,
+    flexDirection: 'row', flexWrap: 'wrap',
+    justifyContent: 'space-between', marginBottom: 16,
   },
   card: {
-    width: '48%',
-    backgroundColor: '#222',
-    borderRadius: 8,
-    marginBottom: 12,
-    overflow: 'hidden',
+    width: '48%', backgroundColor: '#222',
+    borderRadius: 8, marginBottom: 12, overflow: 'hidden',
   },
   cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    flexDirection: 'row', justifyContent: 'space-between',
+    padding: 8, borderBottomWidth: 1, borderBottomColor: '#333',
   },
   cardTitle: { color: '#aaa', fontSize: 14, fontWeight: '500' },
   cardBody: { padding: 8 },
@@ -164,33 +244,38 @@ const styles = StyleSheet.create({
   up: { color: '#4caf50' },
   down: { color: '#f44336' },
 
+  toggleContainer: {
+    flexDirection: 'row', justifyContent: 'center', marginBottom: 12,
+  },
+  toggleBtn: {
+    paddingVertical: 6, paddingHorizontal: 16, marginHorizontal: 4,
+    borderRadius: 20, backgroundColor: '#333',
+  },
+  toggleBtnActive: {
+    backgroundColor: '#4caf50',
+  },
+  toggleLabel: {
+    color: '#ccc', fontSize: 14,
+  },
+  toggleLabelActive: {
+    color: '#fff', fontWeight: 'bold',
+  },
+
   chartSection: { marginBottom: 16 },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#f5f5f5', marginBottom: 8 },
   chartCard: {
-    backgroundColor: '#222',
-    borderRadius: 8,
-    height: 200,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
+    backgroundColor: '#222', borderRadius: 8, padding: 12, alignItems: 'center'
   },
-  chartText: { color: '#888', marginTop: 8 },
-  chartSubtext: { color: '#555', fontSize: 12, marginTop: 4, textAlign: 'center' },
+  noDataText: { color: '#888', fontSize: 14, marginTop: 20 },
 
   moversContainer: { marginBottom: 16 },
   moversCard: {
-    backgroundColor: '#222',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
+    backgroundColor: '#222', borderRadius: 8, padding: 12, marginBottom: 12,
   },
   stockItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+    flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8,
   },
   symbol: { color: '#f5f5f5', fontWeight: 'bold' },
-  name: { color: '#aaa', fontSize: 12 },
   right: { alignItems: 'flex-end' },
   price: { color: '#f5f5f5', fontWeight: 'bold' },
   percent: { fontSize: 12 },
