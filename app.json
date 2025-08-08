@@ -1,5 +1,6 @@
 {
   "expo": {
+    "entryPoint": "index.js",
     "name": "MyExpoApp",
     "slug": "MyExpoApp",
     "version": "1.0.0",
@@ -19,12 +20,9 @@
       "edgeToEdgeEnabled": true
     },
     "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "bundler": "metro"
     },
     "plugins": [
-      "expo-router",
       [
         "expo-splash-screen",
         {
@@ -34,9 +32,6 @@
           "backgroundColor": "#ffffff"
         }
       ]
-    ],
-    "experiments": {
-      "typedRoutes": true
-    }
+    ]
   }
 }
