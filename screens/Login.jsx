@@ -1,4 +1,3 @@
-// screens/Login.js
 import {
   Eye,
   EyeOff,
@@ -8,7 +7,6 @@ import {
 } from 'lucide-react-native';
 import { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -19,26 +17,42 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import AwesomeAlert from 'react-native-awesome-alerts';
 import { logIn } from '../services/auth';
 
 export default function Login({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(false);
-  const [loading, setLoading]   = useState(false);
+  const [email, setEmail]               = useState('');
+  const [password, setPassword]         = useState('');
+  const [remember, setRemember]         = useState(false);
+  const [loading, setLoading]           = useState(false);
+
+  // state for popup
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle]     = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
 
   const handleLogin = async () => {
     if (!email || !password) {
-      return Alert.alert('Thông báo', 'Vui lòng nhập email và mật khẩu');
+      setAlertTitle('Thiếu thông tin');
+      setAlertMessage('Vui lòng nhập email và mật khẩu');
+      setAlertVisible(true);
+      return;
     }
     try {
       setLoading(true);
       await logIn({ email, password });
-      navigation.replace('Dashboard');
+      setAlertTitle('Đăng nhập thành công');
+      setAlertMessage('Chào mừng bạn đã quay lại StockPro!');
+      setAlertVisible(true);
+      setTimeout(() => {
+        setAlertVisible(false);
+        navigation.replace('Dashboard');
+      }, 1500);
     } catch (err) {
-      console.error(err);
-      Alert.alert('Lỗi', err.response?.data?.msg || err.message);
+      setAlertTitle('Lỗi đăng nhập');
+      setAlertMessage(err.response?.data?.msg || err.message);
+      setAlertVisible(true);
     } finally {
       setLoading(false);
     }
@@ -46,6 +60,20 @@ export default function Login({ navigation }) {
 
   return (
     <SafeAreaView style={styles.page}>
+      {/* AwesomeAlert popup */}
+      <AwesomeAlert
+        show={alertVisible}
+        showProgress={false}
+        title={alertTitle}
+        message={alertMessage}
+        closeOnTouchOutside={true}
+        closeOnHardwareBackPress={false}
+        showConfirmButton={true}
+        confirmText="OK"
+        confirmButtonColor="#10b981"
+        onConfirmPressed={() => setAlertVisible(false)}
+      />
+
       <KeyboardAvoidingView
         style={styles.wrapper}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -116,7 +144,10 @@ export default function Login({ navigation }) {
               {/* Remember + Forgot */}
               <View style={styles.rememberRow}>
                 <TouchableOpacity
-                  style={[styles.checkbox, remember && { backgroundColor: '#10b981', borderColor: '#10b981' }]}
+                  style={[
+                    styles.checkbox,
+                    remember && { backgroundColor: '#10b981', borderColor: '#10b981' }
+                  ]}
                   onPress={() => setRemember(v => !v)}
                 />
                 <Text style={styles.rememberText}>Ghi nhớ đăng nhập</Text>
@@ -137,44 +168,16 @@ export default function Login({ navigation }) {
                 </Text>
               </TouchableOpacity>
 
-              {/* Alt Button */}
-              <TouchableOpacity
-                style={styles.altButton}
-                onPress={() => navigation.replace('Dashboard')}
-              >
-                <Text style={styles.altButtonText}>Vào Dashboard</Text>
-              </TouchableOpacity>
-
-              {/* Divider */}
-              <View style={styles.divider}>
-                <Text style={styles.dividerText}>Hoặc</Text>
-              </View>
-
               {/* Switch to Register */}
               <View style={styles.switchRow}>
                 <Text style={styles.switchText}>Chưa có tài khoản? </Text>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('Register')}
-                >
+                <TouchableOpacity onPress={() => navigation.navigate('Register')}>
                   <Text style={styles.switchLink}>Đăng ký ngay</Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Notice */}
-              <View style={styles.notice}>
-                <TrendingUp color="#10b981" size={20} />
-                <View style={styles.noticeBody}>
-                  <Text style={styles.noticeTitle}>Bảo mật cao</Text>
-                  <Text style={styles.noticeText}>
-                    Thông tin của bạn được mã hóa và bảo vệ bằng công nghệ hàng đầu.
-                  </Text>
-                </View>
-              </View>
-
               {/* Footer */}
-              <Text style={styles.footer}>
-                © 2024 StockPro. Tất cả quyền được bảo lưu.
-              </Text>
+              <Text style={styles.footer}>© 2024 StockPro. Tất cả quyền được bảo lưu.</Text>
             </View>
           </View>
         </ScrollView>
@@ -192,12 +195,9 @@ const styles = StyleSheet.create({
   logoCircle: {
     width: 64, height: 64, borderRadius: 20,
     backgroundColor: '#10b981', alignItems: 'center',
-    justifyContent: 'center', marginBottom: 8, elevation: 5,
+    justifyContent: 'center', marginBottom: 8,
   },
-  siteTitle: {
-    fontSize: 32, fontWeight: '700',
-    color: '#fff', marginBottom: 4,
-  },
+  siteTitle: { fontSize: 32, fontWeight: '700', color: '#fff', marginBottom: 4 },
   siteSubtitle: { color: '#d1d5db', fontSize: 14 },
 
   loginCard: {
@@ -208,151 +208,41 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   cardHeader: {
-    paddingVertical: 24,
-    alignItems: 'center',
-    backgroundColor: '#1f2937',
+    paddingVertical: 24, alignItems: 'center', backgroundColor: '#1f2937',
   },
-  cardTitle: {
-    color: '#fff', fontSize: 24,
-    fontWeight: '700',
-  },
-  cardSubtitle: {
-    color: '#9ca3af', marginTop: 4,
-    fontSize: 14,
-  },
+  cardTitle: { color: '#fff', fontSize: 24, fontWeight: '700' },
+  cardSubtitle: { color: '#9ca3af', marginTop: 4, fontSize: 14 },
   cardContent: { padding: 16 },
 
   formGroup: { marginBottom: 20 },
-  label: {
-    color: '#e5e7eb', fontSize: 14,
-    fontWeight: '600', marginBottom: 8,
-  },
+  label: { color: '#e5e7eb', fontSize: 14, fontWeight: '600', marginBottom: 8 },
 
   inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#374151',
-    borderWidth: 1,
-    borderColor: '#4b5563',
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#374151', borderWidth: 1, borderColor: '#4b5563',
+    borderRadius: 8, paddingHorizontal: 12,
   },
-  input: {
-    flex: 1, height: 48,
-    marginLeft: 8,
-    color: '#fff',
-    fontSize: 16,
-  },
+  input: { flex: 1, height: 48, marginLeft: 8, color: '#fff', fontSize: 16 },
 
-  rememberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
+  rememberRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
   checkbox: {
-    width: 20, height: 20,
-    backgroundColor: '#374151',
-    borderWidth: 1,
-    borderColor: '#4b5563',
-    borderRadius: 4,
+    width: 20, height: 20, backgroundColor: '#374151',
+    borderWidth: 1, borderColor: '#4b5563', borderRadius: 4,
   },
-  rememberText: {
-    color: '#d1d5db', fontSize: 14,
-    marginLeft: 8,
-  },
-  rememberSpacer: {
-    flex: 1,
-  },
-  forgotLink: {
-    color: '#10b981',
-    fontSize: 14,
-  },
+  rememberText: { color: '#d1d5db', fontSize: 14, marginLeft: 8 },
+  rememberSpacer: { flex: 1 },
+  forgotLink: { color: '#10b981', fontSize: 14 },
 
   btn: {
-    flexDirection: 'row',
-    height: 48,
-    backgroundColor: '#10b981',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: 'row', height: 48, backgroundColor: '#10b981',
+    borderRadius: 8, alignItems: 'center', justifyContent: 'center',
     marginBottom: 12,
   },
-  btnText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
-  },
+  btnText: { color: '#fff', fontWeight: '600', fontSize: 16 },
 
-  altButton: {
-    height: 48,
-    borderWidth: 1,
-    borderColor: '#10b981',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-  altButtonText: {
-    color: '#10b981',
-    fontWeight: '600',
-    fontSize: 16,
-  },
+  switchRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 24 },
+  switchText: { color: '#d1d5db', fontSize: 14 },
+  switchLink: { color: '#10b981', fontSize: 14, fontWeight: '600' },
 
-  divider: {
-    marginBottom: 24,
-    alignItems: 'center',
-  },
-  dividerText: {
-    paddingHorizontal: 8,
-    backgroundColor: 'rgba(31,41,55,0.9)',
-    color: '#9ca3af',
-    fontSize: 14,
-  },
-
-  switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-  switchText: {
-    color: '#d1d5db',
-    fontSize: 14,
-  },
-  switchLink: {
-    color: '#10b981',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
-  notice: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(31,41,55,0.5)',
-    borderWidth: 1,
-    borderColor: '#374151',
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'flex-start',
-    marginBottom: 24,
-  },
-  noticeBody: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  noticeTitle: {
-    color: '#fff',
-    fontSize: 14,
-    marginBottom: 4,
-    fontWeight: '600',
-  },
-  noticeText: {
-    color: '#9ca3af',
-    fontSize: 12,
-  },
-
-  footer: {
-    textAlign: 'center',
-    color: '#9ca3af',
-    fontSize: 12,
-    marginBottom: 16,
-  },
+  footer: { textAlign: 'center', color: '#9ca3af', fontSize: 12, marginTop: 16 },
 });

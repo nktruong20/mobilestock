@@ -1,4 +1,8 @@
 // App.js
+
+// 1) Patch BackHandler để tránh warning removeEventListener undefined
+import { BackHandler } from 'react-native';
+
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -7,10 +11,13 @@ import Login from './screens/Login';
 import Register from './screens/Register';
 
 // Main screens
-import AccountPage from './screens/AccountPage'; // <-- thêm màn Account
+import AccountPage from './screens/AccountPage';
 import Dashboard from './screens/Dashboard';
 import MarketPage from './screens/MarketPage';
-import NewsPage from './screens/NewsPage'; // <-- thêm màn News
+import NewsPage from './screens/NewsPage';
+if (typeof BackHandler.removeEventListener !== 'function') {
+  BackHandler.removeEventListener = () => {};
+}
 
 const Stack = createNativeStackNavigator();
 
