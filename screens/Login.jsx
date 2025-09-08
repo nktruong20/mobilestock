@@ -1,3 +1,4 @@
+// screens/Login.jsx
 import {
   Eye,
   EyeOff,
@@ -27,31 +28,45 @@ export default function Login({ navigation }) {
   const [remember, setRemember]         = useState(false);
   const [loading, setLoading]           = useState(false);
 
-  // state for popup
+  // Alert popup
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle]     = useState('');
   const [alertMessage, setAlertMessage] = useState('');
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    const emailNorm = email.trim().toLowerCase();
+    const pwd = password;
+
+    if (!emailNorm || !pwd) {
       setAlertTitle('Thiếu thông tin');
       setAlertMessage('Vui lòng nhập email và mật khẩu');
       setAlertVisible(true);
       return;
     }
+
     try {
+      if (loading) return;
       setLoading(true);
-      await logIn({ email, password });
+
+      await logIn({ email: emailNorm, password: pwd });
+
       setAlertTitle('Đăng nhập thành công');
       setAlertMessage('Chào mừng bạn đã quay lại StockPro!');
       setAlertVisible(true);
+
       setTimeout(() => {
         setAlertVisible(false);
         navigation.replace('Dashboard');
       }, 1500);
     } catch (err) {
+      console.log('❌ Lỗi đăng nhập:', {
+        message: err?.message,
+        status: err?.response?.status,
+        data: err?.response?.data,
+      });
+
       setAlertTitle('Lỗi đăng nhập');
-      setAlertMessage(err.response?.data?.msg || err.message);
+      setAlertMessage(err?.response?.data?.message || err.message || 'Đăng nhập thất bại');
       setAlertVisible(true);
     } finally {
       setLoading(false);
@@ -60,7 +75,7 @@ export default function Login({ navigation }) {
 
   return (
     <SafeAreaView style={styles.page}>
-      {/* AwesomeAlert popup */}
+      {/* Popup */}
       <AwesomeAlert
         show={alertVisible}
         showProgress={false}
@@ -114,6 +129,7 @@ export default function Login({ navigation }) {
                     autoCapitalize="none"
                     value={email}
                     onChangeText={setEmail}
+                    editable={!loading}
                   />
                 </View>
               </View>
@@ -130,8 +146,9 @@ export default function Login({ navigation }) {
                     secureTextEntry={!showPassword}
                     value={password}
                     onChangeText={setPassword}
+                    editable={!loading}
                   />
-                  <TouchableOpacity onPress={() => setShowPassword(v => !v)}>
+                  <TouchableOpacity onPress={() => setShowPassword(v => !v)} disabled={loading}>
                     {showPassword ? (
                       <EyeOff color="#9ca3af" size={20} />
                     ) : (
@@ -149,6 +166,7 @@ export default function Login({ navigation }) {
                     remember && { backgroundColor: '#10b981', borderColor: '#10b981' }
                   ]}
                   onPress={() => setRemember(v => !v)}
+                  disabled={loading}
                 />
                 <Text style={styles.rememberText}>Ghi nhớ đăng nhập</Text>
                 <View style={styles.rememberSpacer} />
@@ -171,7 +189,7 @@ export default function Login({ navigation }) {
               {/* Switch to Register */}
               <View style={styles.switchRow}>
                 <Text style={styles.switchText}>Chưa có tài khoản? </Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                <TouchableOpacity onPress={() => navigation.navigate('Register')} disabled={loading}>
                   <Text style={styles.switchLink}>Đăng ký ngay</Text>
                 </TouchableOpacity>
               </View>

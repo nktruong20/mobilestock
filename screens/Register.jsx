@@ -29,37 +29,45 @@ export default function Register({ navigation }) {
   const [alertMessage, setAlertMessage] = useState('');
   const [isSuccess, setIsSuccess]       = useState(false);
 
+  const showAlert = (ok, title, message) => {
+    setIsSuccess(ok);
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertVisible(true);
+  };
+
   const handleRegister = async () => {
-    if (!fullname || !email || !password) {
-      setIsSuccess(false);
-      setAlertTitle('Thiếu thông tin');
-      setAlertMessage('Vui lòng điền đầy đủ họ tên, email và mật khẩu');
-      return setAlertVisible(true);
+    const name = fullname.trim();
+    const emailNorm = email.trim().toLowerCase();
+    const pwd = password;
+
+    if (!name || !emailNorm || !pwd) {
+      return showAlert(false, 'Thiếu thông tin', 'Vui lòng điền đầy đủ họ tên, email và mật khẩu');
     }
-    if (password.length < 8) {
-      setIsSuccess(false);
-      setAlertTitle('Mật khẩu yếu');
-      setAlertMessage('Mật khẩu phải có ít nhất 8 ký tự');
-      return setAlertVisible(true);
+    if (pwd.length < 8) {
+      return showAlert(false, 'Mật khẩu yếu', 'Mật khẩu phải có ít nhất 8 ký tự');
     }
     if (!agree) {
-      setIsSuccess(false);
-      setAlertTitle('Chưa đồng ý');
-      setAlertMessage('Bạn cần đồng ý Điều khoản sử dụng');
-      return setAlertVisible(true);
+      return showAlert(false, 'Chưa đồng ý', 'Bạn cần đồng ý Điều khoản sử dụng');
     }
+
     try {
+      if (loading) return; // tránh double tap
       setLoading(true);
-      await signUp({ fullname, email, password });
-      setIsSuccess(true);
-      setAlertTitle('Đăng ký thành công');
-      setAlertMessage('Chào mừng bạn đến với StockPro!');
-      setAlertVisible(true);
+
+      // ✅ Gửi đúng key "name" cho backend
+      await signUp({ name, email: emailNorm, password: pwd });
+
+      showAlert(true, 'Đăng ký thành công', 'Chào mừng bạn đến với StockPro!');
     } catch (err) {
-      setIsSuccess(false);
-      setAlertTitle('Lỗi đăng ký');
-      setAlertMessage(err.response?.data?.msg || err.message);
-      setAlertVisible(true);
+      console.log('❌ Lỗi đăng ký:', {
+        message: err?.message,
+        status: err?.response?.status,
+        data: err?.response?.data,
+      });
+
+      const backendMsg = err?.response?.data?.message;
+      showAlert(false, 'Lỗi đăng ký', backendMsg || err.message || 'Đăng ký thất bại');
     } finally {
       setLoading(false);
     }
@@ -74,7 +82,6 @@ export default function Register({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* AwesomeAlert */}
       <AwesomeAlert
         show={alertVisible}
         showProgress={false}
@@ -92,7 +99,7 @@ export default function Register({ navigation }) {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={styles.container}>
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           {/* Logo + Header */}
           <View style={styles.logoSection}>
             <View style={styles.logoCircle}>
@@ -122,6 +129,8 @@ export default function Register({ navigation }) {
                   style={styles.input}
                   value={fullname}
                   onChangeText={setFullname}
+                  autoCapitalize="words"
+                  editable={!loading}
                 />
               </View>
             </View>
@@ -135,9 +144,11 @@ export default function Register({ navigation }) {
                   placeholder="example@email.com"
                   placeholderTextColor="#9ca3af"
                   keyboardType="email-address"
+                  autoCapitalize="none"
                   style={styles.input}
                   value={email}
                   onChangeText={setEmail}
+                  editable={!loading}
                 />
               </View>
             </View>
@@ -154,10 +165,12 @@ export default function Register({ navigation }) {
                   style={styles.input}
                   value={password}
                   onChangeText={setPassword}
+                  editable={!loading}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(v => !v)}
                   style={styles.eyeButton}
+                  disabled={loading}
                 >
                   {showPassword
                     ? <EyeOff color="#9ca3af" size={20} />
@@ -178,6 +191,7 @@ export default function Register({ navigation }) {
                   agree && { backgroundColor: '#10b981', borderColor: '#10b981' },
                 ]}
                 onPress={() => setAgree(v => !v)}
+                disabled={loading}
               />
               <Text style={styles.termsText}>
                 Tôi đồng ý với <Text style={styles.link}>Điều khoản</Text> và{' '}
@@ -203,6 +217,7 @@ export default function Register({ navigation }) {
             <TouchableOpacity
               style={styles.loginLink}
               onPress={() => navigation.navigate('Login')}
+              disabled={loading}
             >
               <Text style={styles.loginLinkText}>
                 Đã có tài khoản? <Text style={styles.link}>Đăng nhập</Text>
